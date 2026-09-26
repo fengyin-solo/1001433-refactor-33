@@ -18,6 +18,9 @@ const Material = () => import('@/views/material/index.vue')
 const Equip = () => import('@/views/equip/index.vue')
 const Fund = () => import('@/views/fund/index.vue')
 const Complaint = () => import('@/views/complaint/index.vue')
+const ComplaintReply = () => import('@/views/complaint/reply.vue')
+const ComplaintStats = () => import('@/views/complaint/stats.vue')
+const ComplaintDetail = () => import('@/views/complaint/detail.vue')
 const Archive = () => import('@/views/archive/index.vue')
 
 const router = createRouter({
@@ -41,6 +44,9 @@ const router = createRouter({
     { path: '/equip', name: 'equip', component: Equip },
     { path: '/fund', name: 'fund', component: Fund },
     { path: '/complaint', name: 'complaint', component: Complaint },
+    { path: '/complaint/reply', name: 'complaint-reply', component: ComplaintReply },
+    { path: '/complaint/stats', name: 'complaint-stats', component: ComplaintStats },
+    { path: '/complaint/:id', name: 'complaint-detail', component: ComplaintDetail },
     { path: '/archive', name: 'archive', component: Archive },
   ],
 })
