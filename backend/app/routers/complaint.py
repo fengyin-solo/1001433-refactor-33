@@ -1,4 +1,8 @@
-"""公众诉求接口：维护诉求记录，覆盖受理诉求、提交回复、关闭诉求等动作。"""
+"""公众诉求接口：维护诉求记录，覆盖受理诉求、提交回复、关闭诉求等动作。
+
+列表、详情、统计与导出都走 ComplaintService 里的同一份超期判定与办理期限口径，
+保证刷新后列表、超期件数与详情页结论一致。
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -6,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas import ActionResult, EntryPayload, PageResult
-from app.services.complaint import ComplaintService
+from app.services.complaint import ComplaintService, public_view
 
 router = APIRouter(prefix="/api/complaint", tags=["公众诉求"])
 
@@ -30,6 +34,19 @@ def list_entries(
     return PageResult(items=items, total=total, page=page, size=size)
 
 
+@router.get("/stats")
+def complaint_stats() -> dict[str, int]:
+    """诉求统计卡片：各状态件数与超期件数，超期口径与列表、详情完全一致。"""
+    return service.stats()
+
+
+@router.get("/export")
+def export_entries() -> dict[str, Any]:
+    """导出公众诉求清单：返回当前过滤条件下的全量数据，含统一的办理期限与超期结论。"""
+    items, total = service.list_entries(page=1, size=10000)
+    return {"module": "complaint", "total": total, "items": items}
+
+
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
     """读取单条诉求记录明细；不存在时给出可读的错误说明。"""
@@ -45,21 +62,14 @@ def create_entry(payload: EntryPayload) -> ActionResult:
     entry, missing = service.create_entry(payload.values)
     if missing:
         return ActionResult(ok=False, message=f"缺少必填字段：{'、'.join(missing)}")
-    return ActionResult(ok=True, message="诉求记录已登记", entry=entry)
+    return ActionResult(ok=True, message="诉求记录已登记", entry=public_view(entry))
 
 
 @router.post("/{entry_id}/actions", response_model=ActionResult)
 def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
     """对单条诉求记录执行受理诉求、提交回复、关闭诉求；不允许的动作会被拦下并说明原因。"""
     action = str(payload.values.get("action") or "").strip()
-    entry, message = service.run_action(entry_id, action)
+    entry, message = service.run_action(entry_id, action, payload.values)
     if entry is None:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)
-
-
-@router.get("/export")
-def export_entries() -> dict[str, Any]:
-    """导出公众诉求清单：返回当前过滤条件下的全量数据。"""
-    items, total = service.list_entries(page=1, size=10000)
-    return {"module": "complaint", "total": total, "items": items}
